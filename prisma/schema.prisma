@@ -1,0 +1,135 @@
+
+generator client { provider = "prisma-client-js" }
+datasource db { provider = "postgresql" url = env("DATABASE_URL") }
+
+model Company {
+  id String @id @default(cuid())
+  name String @unique
+  industry Industry
+  status String @default("Active")
+  subscription String @default("Professional")
+  createdAt DateTime @default(now())
+  users User[]
+  workflows Workflow[]
+  machines Machine[]
+  materials Material[]
+  productionOrders ProductionOrder[]
+  movements ProductionMovement[]
+  scrapRecords ScrapRecord[]
+  qualityInspections QualityInspection[]
+  auditLogs AuditLog[]
+  departments Department[]
+  employees Employee[]
+  @@index([industry])
+}
+
+enum Industry { Forging MachineShop SteelFabrication Foundry Engineering Automotive Plastic Furniture MiningWorkshop Custom }
+
+model User {
+  id String @id @default(cuid())
+  companyId String
+  company Company @relation(fields:[companyId], references:[id], onDelete:Cascade)
+  email String @unique
+  passwordHash String
+  name String
+  role Role
+  createdAt DateTime @default(now())
+  auditLogs AuditLog[]
+  @@index([companyId, email])
+}
+
+enum Role { SuperAdmin CompanyAdmin ProductionManager Supervisor Operator QualityInspector WarehouseUser MaintenanceTechnician FinanceUser Viewer }
+
+model Department { id String @id @default(cuid()) companyId String company Company @relation(fields:[companyId], references:[id], onDelete:Cascade) name String @@unique([companyId, name]) }
+
+model Employee { id String @id @default(cuid()) companyId String company Company @relation(fields:[companyId], references:[id], onDelete:Cascade) name String number String @unique department String shift String }
+
+model Machine {
+  id String @id @default(cuid()) companyId String company Company @relation(fields:[companyId], references:[id], onDelete:Cascade)
+  code String @unique name String department String type String status String @default("Idle") capacity Int
+  movements ProductionMovement[] scrapRecords ScrapRecord[] qualityInspections QualityInspection[]
+  @@index([companyId, status])
+}
+
+model Material {
+  id String @id @default(cuid()) companyId String company Company @relation(fields:[companyId], references:[id], onDelete:Cascade)
+  code String description String grade String batchNumber String castNumber String heatNumber String supplier String weight Float quantity Float warehouse String location String
+  inventoryTransactions InventoryTransaction[] productionOrders ProductionOrder[]
+  @@index([companyId, castNumber]) @@index([companyId, heatNumber]) @@index([companyId, batchNumber])
+}
+
+model Workflow {
+  id String @id @default(cuid()) companyId String company Company @relation(fields:[companyId], references:[id], onDelete:Cascade)
+  name String productType String operations WorkflowOperation[]
+  @@index([companyId])
+}
+
+model WorkflowOperation {
+  id String @id @default(cuid()) workflowId String workflow Workflow @relation(fields:[workflowId], references:[id], onDelete:Cascade)
+  name String number Int department String expectedMins Int qualityCheckpoint Boolean @default(false) nextOpIds String[] // array of operation ids for parallel/rework
+  @@index([workflowId, number])
+}
+
+model ProductionOrder {
+  id String @id @default(cuid()) companyId String company Company @relation(fields:[companyId], references:[id], onDelete:Cascade)
+  number String @unique @default(cuid()) customer String product String quantity Int status ProductionStatus @default(Waiting) currentOperation String
+  workflowId String workflow Workflow @relation(fields:[workflowId], references:[id])
+  materialId String material Material @relation(fields:[materialId], references:[id])
+  plannedStart DateTime plannedEnd DateTime actualStart DateTime? actualEnd DateTime? priority String
+  serialNumbers String[] // or separate Serial model for full traceability
+  jobOperations JobOperation[]
+  movements ProductionMovement[] scrapRecords ScrapRecord[] qualityInspections QualityInspection[] inventoryTransactions InventoryTransaction[]
+  createdAt DateTime @default(now())
+  @@index([companyId, status]) @@index([companyId, currentOperation])
+}
+
+enum ProductionStatus { Waiting InProgress Completed Late AtRisk }
+
+model JobOperation {
+  id String @id @default(cuid()) productionOrderId String productionOrder ProductionOrder @relation(fields:[productionOrderId], references:[id], onDelete:Cascade)
+  operationName String status String operatorId String? machineId String? startTime DateTime? endTime DateTime?
+}
+
+model ProductionMovement {
+  id String @id @default(cuid()) companyId String company Company @relation(fields:[companyId], references:[id], onDelete:Cascade)
+  productionOrderId String productionOrder ProductionOrder @relation(fields:[productionOrderId], references:[id], onDelete:Cascade)
+  fromOperation String toOperation String quantity Int userId String machineId String? operatorId String? timestamp DateTime @default(now())
+  machine Machine? @relation(fields:[machineId], references:[id])
+  @@index([companyId, productionOrderId]) @@index([timestamp])
+}
+
+model InventoryTransaction {
+  id String @id @default(cuid()) companyId String @default("c1") // denormalized for tenant filter
+  materialId String material Material @relation(fields:[materialId], references:[id], onDelete:Cascade)
+  productionOrderId String productionOrder ProductionOrder @relation(fields:[productionOrderId], references:[id], onDelete:Cascade)
+  type TransactionType quantity Float userId String timestamp DateTime @default(now())
+}
+
+enum TransactionType { Issue Consume Return Scrap }
+
+model ScrapRecord {
+  id String @id @default(cuid()) companyId String company Company @relation(fields:[companyId], references:[id], onDelete:Cascade)
+  productionOrderId String productionOrder ProductionOrder @relation(fields:[productionOrderId], references:[id], onDelete:Cascade)
+  operation String quantity Int weight Float reason ScrapReason machineId String? operatorId String? timestamp DateTime @default(now())
+  machine Machine? @relation(fields:[machineId], references:[id])
+  @@index([companyId, reason])
+}
+
+enum ScrapReason { MachineDefect OperatorError MaterialDefect IncorrectDimensions QualityFailure DamagedMaterial Other }
+
+model QualityInspection {
+  id String @id @default(cuid()) companyId String company Company @relation(fields:[companyId], references:[id], onDelete:Cascade)
+  productionOrderId String productionOrder ProductionOrder @relation(fields:[productionOrderId], references:[id], onDelete:Cascade)
+  serialNumber String operation String result InspectionResult defectType String? defectDescription String? quantityRejected Int inspectorId String machineId String? operatorId String? timestamp DateTime @default(now())
+  machine Machine? @relation(fields:[machineId], references:[id])
+  @@index([companyId, result]) @@index([companyId, serialNumber])
+}
+
+enum InspectionResult { Pass Fail ConditionalPass Rework }
+
+model AuditLog {
+  id String @id @default(cuid()) companyId String company Company @relation(fields:[companyId], references:[id], onDelete:Cascade)
+  userId String user User @relation(fields:[userId], references:[id], onDelete:Cascade)
+  action String fromOperation String? toOperation String? timestamp DateTime @default(now()) metadata Json?
+  @@index([companyId, timestamp])
+}
