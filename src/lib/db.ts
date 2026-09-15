@@ -2,29 +2,43 @@
 
 let redis: Redis | null = null
 try {
-  if(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN){
-    redis = new Redis({ url: process.env.UPSTASH_REDIS_REST_URL, token: process.env.UPSTASH_REDIS_REST_TOKEN })
-  } else if(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN){
-    redis = new Redis({ url: process.env.KV_REST_API_URL, token: process.env.KV_REST_API_TOKEN })
+  const url = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN
+  if(url && token){
+    redis = new Redis({ url, token })
   }
-} catch(e){ console.log("No Redis, using memory") }
-
-// Memory fallback
-const mem = global as any
-if(!mem._store) mem._store = { tenants:[{id:"SWASAP", name:"SWASAP"}], workflows:[{id:"SWASAP-001", name:"SWASAP-001", status:"In Progress", companyId:"SWASAP", notes:[]}], machines:[], users:[] }
-
-async function getList(key:string){
-  if(redis){ const v=await redis.get(key); return v as any[] || [] }
-  return mem._store[key]||[]
+} catch(e){
+  console.log("Redis not configured, using memory")
 }
-async function setList(key:string, val:any[]){
-  if(redis){ await redis.set(key,val) } else { mem._store[key]=val }
+
+const mem = (global as any)
+if(!mem._store){
+  mem._store = {
+    tenants: [{id:"SWASAP", name:"SWASAP"}],
+    workflows: [{id:"SWASAP-001", name:"SWASAP-001", status:"In Progress", companyId:"SWASAP", notes:[]}],
+    machines: [],
+    users: []
+  }
+}
+
+async function getList(k:string){
+  if(redis){
+    try{ const v = await redis.get(k); if(Array.isArray(v)) return v }catch{}
+  }
+  return mem._store[k] || []
+}
+
+async function setList(k:string, v:any[]){
+  mem._store[k]=v
+  if(redis){
+    try{ await redis.set(k,v) }catch{}
+  }
 }
 
 export const db = {
-  async getTenants(){ const list=await getList("tenants"); return list.length?list:mem._store.tenants },
+  async getTenants(){ const l=await getList("tenants"); return l.length?l:mem._store.tenants },
   async setTenants(v:any[]){ await setList("tenants",v) },
-  async getWorkflows(){ return await getList("workflows") },
+  async getWorkflows(){ const l=await getList("workflows"); return l.length?l:mem._store.workflows },
   async setWorkflows(v:any[]){ await setList("workflows",v) },
   async getMachines(){ return await getList("machines") },
   async setMachines(v:any[]){ await setList("machines",v) },
