@@ -1,17 +1,4 @@
-﻿import { Redis } from "@upstash/redis"
-
-let redis: Redis | null = null
-try {
-  const url = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN
-  if(url && token){
-    redis = new Redis({ url, token })
-  }
-} catch(e){
-  console.log("Redis not configured, using memory")
-}
-
-const mem = (global as any)
+﻿const mem = (global as any)
 if(!mem._store){
   mem._store = {
     tenants: [{id:"SWASAP", name:"SWASAP"}],
@@ -20,21 +7,8 @@ if(!mem._store){
     users: []
   }
 }
-
-async function getList(k:string){
-  if(redis){
-    try{ const v = await redis.get(k); if(Array.isArray(v)) return v }catch{}
-  }
-  return mem._store[k] || []
-}
-
-async function setList(k:string, v:any[]){
-  mem._store[k]=v
-  if(redis){
-    try{ await redis.set(k,v) }catch{}
-  }
-}
-
+async function getList(k:string){ return mem._store[k] || [] }
+async function setList(k:string, v:any[]){ mem._store[k]=v }
 export const db = {
   async getTenants(){ const l=await getList("tenants"); return l.length?l:mem._store.tenants },
   async setTenants(v:any[]){ await setList("tenants",v) },
