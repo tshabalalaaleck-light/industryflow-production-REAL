@@ -1,14 +1,33 @@
-﻿import { kv } from "@vercel/kv"
-// Fallback to memory if KV not setup yet
-const mem = globalThis as any
-mem._db = mem._db || { tenants: [{id:"demo-company-123",name:"Demo Company"},{id:"swasap-001",name:"SWASAP"}], users: [{id:"1",email:"alecmshengu@outlook.com",password:"Admin123!",role:"SUPER_ADMIN",companyId:"demo-company-123",title:"Super Admin"},{id:"2",email:"nkosi@swasap.cm",password:"Nkosi123!",role:"USER",companyId:"swasap-001",title:"Manager"}], workflows: [{id:"wf-001",name:"DEMO-001",status:"In Progress",companyId:"demo-company-123",notes:[]},{id:"wf-002",name:"SWASAP-001",status:"In Progress",companyId:"swasap-001",notes:[]}], machines: [{id:"m-001",name:"Do All Billet Saw",category:"Cutting",status:"Running",runningHrs:3249,downtime:11,workNumber:"SWASAP-001",companyId:"swasap-001"}] }
+﻿import { Redis } from "@upstash/redis"
 
-export async function getAll(key:string){
-  try{ const data = await kv.get(key); if(data) return data; }catch(e){ }
-  return mem._db[key] || []
+let redis: Redis | null = null
+try {
+  if(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN){
+    redis = new Redis({ url: process.env.UPSTASH_REDIS_REST_URL, token: process.env.UPSTASH_REDIS_REST_TOKEN })
+  } else if(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN){
+    redis = new Redis({ url: process.env.KV_REST_API_URL, token: process.env.KV_REST_API_TOKEN })
+  }
+} catch(e){ console.log("No Redis, using memory") }
+
+// Memory fallback
+const mem = global as any
+if(!mem._store) mem._store = { tenants:[{id:"SWASAP", name:"SWASAP"}], workflows:[{id:"SWASAP-001", name:"SWASAP-001", status:"In Progress", companyId:"SWASAP", notes:[]}], machines:[], users:[] }
+
+async function getList(key:string){
+  if(redis){ const v=await redis.get(key); return v as any[] || [] }
+  return mem._store[key]||[]
 }
-export async function setAll(key:string, val:any){
-  mem._db[key] = val
-  try{ await kv.set(key,val); }catch(e){ }
-  return val
+async function setList(key:string, val:any[]){
+  if(redis){ await redis.set(key,val) } else { mem._store[key]=val }
+}
+
+export const db = {
+  async getTenants(){ const list=await getList("tenants"); return list.length?list:mem._store.tenants },
+  async setTenants(v:any[]){ await setList("tenants",v) },
+  async getWorkflows(){ return await getList("workflows") },
+  async setWorkflows(v:any[]){ await setList("workflows",v) },
+  async getMachines(){ return await getList("machines") },
+  async setMachines(v:any[]){ await setList("machines",v) },
+  async getUsers(){ return await getList("users") },
+  async setUsers(v:any[]){ await setList("users",v) },
 }
