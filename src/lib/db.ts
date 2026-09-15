@@ -8,17 +8,16 @@ if(!mem._store){
   }
 }
 
-// OLD API that your files expect - KEEP IT!
 export async function getAll(key:string){
   return mem._store[key] || []
 }
 export async function setAll(key:string, val:any[]){
   mem._store[key]=val
-  // Try save to Upstash if env exists - but don't fail if not
   try{
     const url = process.env.UPSTASH_REDIS_REST_URL
     const token = process.env.UPSTASH_REDIS_REST_TOKEN
     if(url && token){
+      // @ts-ignore - ignore if package not installed during build check
       const { Redis } = await import("@upstash/redis")
       const redis = new Redis({url, token})
       await redis.set(key, val)
@@ -27,7 +26,6 @@ export async function setAll(key:string, val:any[]){
   return val
 }
 
-// NEW API also
 export const db = {
   async getTenants(){ return await getAll("tenants") },
   async setTenants(v:any[]){ return await setAll("tenants", v) },
