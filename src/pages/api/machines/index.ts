@@ -1,5 +1,5 @@
 ﻿import type { NextApiRequest, NextApiResponse } from "next"
-import { getAll, setAll } from "../../lib/db"
+import { getAll, setAll } from "../../../lib/db"
 export default async function handler(req: NextApiRequest, res: NextApiResponse){
   let machines = await getAll("machines") as any[]
   const { companyId, id } = req.query

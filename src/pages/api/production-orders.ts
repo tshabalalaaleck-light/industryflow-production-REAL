@@ -1,4 +1,4 @@
-
+﻿
 import { PrismaClient } from '@prisma/client'; import { verifyJWT } from '../../lib/auth';
 const prisma = new PrismaClient();
 export default async function handler(req:any,res:any){

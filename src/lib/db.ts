@@ -7,7 +7,6 @@ if(!mem._store){
     users: []
   }
 }
-
 export async function getAll(key:string){
   return mem._store[key] || []
 }
@@ -17,7 +16,7 @@ export async function setAll(key:string, val:any[]){
     const url = process.env.UPSTASH_REDIS_REST_URL
     const token = process.env.UPSTASH_REDIS_REST_TOKEN
     if(url && token){
-      // @ts-ignore - ignore if package not installed during build check
+      // @ts-ignore
       const { Redis } = await import("@upstash/redis")
       const redis = new Redis({url, token})
       await redis.set(key, val)
@@ -25,7 +24,6 @@ export async function setAll(key:string, val:any[]){
   }catch(e){}
   return val
 }
-
 export const db = {
   async getTenants(){ return await getAll("tenants") },
   async setTenants(v:any[]){ return await setAll("tenants", v) },

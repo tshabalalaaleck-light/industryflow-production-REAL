@@ -1,5 +1,5 @@
 ﻿import type { NextApiRequest, NextApiResponse } from "next"
-import { getAll, setAll } from "../../lib/db"
+import { getAll, setAll } from "../../../lib/db"
 export default async function handler(req: NextApiRequest, res: NextApiResponse){
   let tenants = await getAll("tenants") as any[]
   if(req.method==="GET") return res.status(200).json({ tenants })
