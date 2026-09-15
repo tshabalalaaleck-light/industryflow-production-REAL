@@ -1,9 +1,8 @@
 ﻿node_modules
 .next
-out
 .env
 .env.local
-.env.development.local
-.env.test.local
-.env.production.local
-package-lock.json
+*.log
+.DS_Store
+make-icons.js
+source-icon png*
