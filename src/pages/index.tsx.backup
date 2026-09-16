@@ -1,6 +1,4 @@
-﻿import { useState } from "react"
-const SUPER_EMAIL = "alecmshengu@outlook.com";
-const SUPER_PASS = "Dimudz@21";
+import { useState } from "react"
 export default function Login(){
   const [email,setEmail]=useState(""); const [pwd,setPwd]=useState(""); const [msg,setMsg]=useState("")
   const login=async()=>{
@@ -25,4 +23,3 @@ export default function Login(){
     </div>
   )
 }
-
