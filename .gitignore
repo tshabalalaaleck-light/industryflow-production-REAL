@@ -6,3 +6,5 @@
 .DS_Store
 make-icons.js
 source-icon png*
+.vercel
+.env*
