@@ -1,4 +1,4 @@
-﻿import { useState } from "react"
+import { useState } from "react"
 export default function Login(){
   const [email,setEmail]=useState(""); const [pwd,setPwd]=useState(""); const [msg,setMsg]=useState("")
   const login=async()=>{
@@ -19,7 +19,6 @@ export default function Login(){
         <input placeholder="Password" type="password" value={pwd} onChange={e=>setPwd(e.target.value)} style={{width:"100%", padding:12, background:"#0a0a0f", border:"1px solid #333", color:"white", borderRadius:6, marginBottom:15}}/>
         <button onClick={login} style={{width:"100%", padding:12, background:"#ff7a00", color:"white", border:"none", borderRadius:6, fontWeight:700, cursor:"pointer"}}>Login</button>
         {msg && <div style={{marginTop:12, fontSize:12, color:msg.includes("Wrong")?"#ff5555":"#00ff88"}}>{msg}</div>}
-        <div style={{marginTop:15, fontSize:11, color:"#666"}}>Demo: alecmshengu@outlook.com / Admin123!</div>
       </div>
     </div>
   )
